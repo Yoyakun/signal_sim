@@ -14,7 +14,7 @@ main{max-width:1250px;margin:auto;padding:16px}.panel{background:var(--panel);bo
 @media(max-width:600px){main{padding:9px}.panel{padding:12px}.rail{min-width:850px}}
 </style></head>
 <body>
-<header><h1>信号現示シミュレーション</h1><p>各信号現示確認問題</p></header>
+<header><h1>信号現示シミュレーション</h1><p>各信号現示確認問題 ver,1.02</p></header>
 <main>
 <section class="panel"><div class="controls">
 <div class="field"><label for="mode">モード</label><select id="mode"><option value="practice">練習モード</option><option value="quiz">問題モード</option><option value="sim">シミュレーターモード</option></select></div>
@@ -26,7 +26,7 @@ main{max-width:1250px;margin:auto;padding:16px}.panel{background:var(--panel);bo
 </div><div class="status" id="status">練習モード：列車を配置して、前方の信号現示を選択してください。</div></section>
 <section class="panel"><div class="legend"><span><i class="dot" style="background:#16a34a"></i>G</span><span><i class="dot" style="background:#eab308"></i>Y</span><span><i class="dot" style="background:#dc2626"></i>R</span><span>中継信号：進行／制限／停止</span></div>
 <div class="railwrap"><div class="rail" id="rail"><div class="track"></div></div></div>
-<div class="small">各閉塞には1列車しか進入しません。</div></section>
+<div class="small">2026/11/26 修正済み。</div></section>
 <section class="panel" id="practicePanel"><h3>現示を選択</h3><div id="practiceQuestions"></div></section>
 <section class="panel hidden" id="quizPanel"><h3>問題の解答</h3><div id="quizQuestions" class="questions"></div><button class="primary" id="grade" style="margin-top:12px">解答・答え合わせ</button><div id="gradeResult" class="status hidden"></div></section>
 </main>
