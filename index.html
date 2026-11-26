@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>信号現示シミュレーション</title>
+<style>
+:root{--ink:#243044;--line:#536174;--bg:#f3f6fa;--panel:#fff;--blue:#2563eb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:system-ui,"Yu Gothic",Meiryo,sans-serif;color:var(--ink)}
+header{background:#14243a;color:white;padding:18px 22px}h1{font-size:clamp(20px,3vw,28px);margin:0}header p{margin:6px 0 0;color:#cbd5e1}
+main{max-width:1250px;margin:auto;padding:16px}.panel{background:var(--panel);border:1px solid #d9e1eb;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px #182b4410}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.field{display:grid;gap:5px}label{font-size:13px;color:#526174}select,button{font:inherit;border:1px solid #c7d2df;border-radius:9px;padding:9px 12px;background:white;color:var(--ink)}button{cursor:pointer;font-weight:650}button.primary{background:var(--blue);color:white;border-color:var(--blue)}button:disabled{opacity:.4;cursor:not-allowed}
+.railwrap{overflow-x:auto;padding:18px 4px}.rail{min-width:1000px;height:350px;position:relative}.track{position:absolute;left:20px;right:20px;top:126px;height:8px;border-top:3px solid #6b7280;border-bottom:3px solid #6b7280}.occupied-line{position:absolute;top:126px;height:8px;background:#dc2626;z-index:1;box-shadow:0 0 0 1px #991b1b}.station{position:absolute;top:111px;width:75px;height:38px;background:#dbeafe;border:2px solid #2563eb;border-radius:5px;text-align:center;font-weight:bold;padding-top:7px;z-index:2}.station .platform{position:absolute;top:38px;left:4px;right:4px;height:8px;background:#94a3b8;border-radius:3px}
+.signal{position:absolute;top:45px;transform:translateX(-50%);text-align:center;width:56px;z-index:3}.signame{font-size:12px;font-weight:bold;white-space:nowrap}.lamp{width:38px;height:38px;margin:4px auto 0;border:3px solid #334155;border-radius:50%;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900;font-size:15px;box-shadow:inset 0 0 0 2px #0005}.lamp.G{background:#16a34a}.lamp.Y{background:#eab308;color:#172033}.lamp.R{background:#dc2626}.lamp.YY{background:#f59e0b;color:#172033;font-size:11px}.lamp.YG{background:linear-gradient(135deg,#eab308 0 50%,#16a34a 50%);font-size:11px}.lamp.neutral{background:#111827}.aspect-image{display:block;width:38px;height:auto;max-width:none;margin:40px auto 0;object-fit:contain}.aspect-image[hidden]{display:none}.arrow{font-size:20px;line-height:20px}.train{position:absolute;top:160px;transform:translateX(-50%);font-size:29px;filter:drop-shadow(0 2px 2px #777)}.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:4px}.status{padding:10px 12px;background:#eff6ff;border-radius:8px;margin-top:10px}.answers{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.answers button{min-width:100px}.questions{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.q{border:1px solid #dbe3ed;border-radius:10px;padding:12px}.q strong{display:block;margin-bottom:8px}.small{font-size:12px;color:#64748b}.hidden{display:none!important}
+@media(max-width:600px){main{padding:9px}.panel{padding:12px}.rail{min-width:850px}}
+</style></head>
+<body>
+<header><h1>信号現示シミュレーション</h1><p>各信号現示確認問題</p></header>
+<main>
+<section class="panel"><div class="controls">
+<div class="field"><label for="mode">モード</label><select id="mode"><option value="practice">練習モード</option><option value="quiz">問題モード</option><option value="sim">シミュレーターモード</option></select></div>
+<div class="field"><label for="aspect">灯式</label><select id="aspect"><option value="3">3灯式モード</option><option value="4">4灯式モード</option><option value="5">5灯式モード</option></select></div>
+<div class="field" id="practiceControls"><label>練習</label><button class="primary" id="newPractice">練習列車を配置</button></div>
+<div class="field hidden" id="quizControls"><label>問題</label><button class="primary" id="newQuiz">問題を作成</button></div>
+<div class="field hidden" id="simControls"><label>列車本数</label><select id="simCount"><option value="1">1本</option><option value="2">2本</option><option value="3">3本</option></select><label>自動運転</label><button class="primary" id="simToggle">シミュレーター開始</button></div>
+<button id="reset">リセット</button>
+</div><div class="status" id="status">練習モード：列車を配置して、前方の信号現示を選択してください。</div></section>
+<section class="panel"><div class="legend"><span><i class="dot" style="background:#16a34a"></i>G</span><span><i class="dot" style="background:#eab308"></i>Y</span><span><i class="dot" style="background:#dc2626"></i>R</span><span>中継信号：進行／制限／停止</span></div>
+<div class="railwrap"><div class="rail" id="rail"><div class="track"></div></div></div>
+<div class="small">各閉塞には1列車しか進入しません。</div></section>
+<section class="panel" id="practicePanel"><h3>現示を選択</h3><div id="practiceQuestions"></div></section>
+<section class="panel hidden" id="quizPanel"><h3>問題の解答</h3><div id="quizQuestions" class="questions"></div><button class="primary" id="grade" style="margin-top:12px">解答・答え合わせ</button><div id="gradeResult" class="status hidden"></div></section>
+</main>
+<script>
+const rail=document.getElementById('rail'),modeEl=document.getElementById('mode'),aspectEl=document.getElementById('aspect');
+const stations=[{name:'A駅',x:5},{name:'B駅',x:76.5},{name:'C駅',x:95}];
+const signals=[
+{name:'A駅 出発',type:'出発',x:10,dir:'→',section:0},{name:'第6閉塞',type:'閉塞',x:19,dir:'→',section:1},
+{name:'第5閉塞',type:'閉塞',x:27,dir:'→',section:2},{name:'第4閉塞',type:'閉塞',x:35,dir:'→',section:3},
+{name:'中継',type:'中継',x:43,dir:'→',section:4},{name:'第3閉塞',type:'閉塞',x:51,dir:'→',section:5},
+{name:'第2閉塞',type:'閉塞',x:60,dir:'→',section:6},{name:'第1閉塞',type:'閉塞',x:69,dir:'→',section:7},
+{name:'B駅 場内',type:'場内',x:77,dir:'→',section:8},{name:'B駅 出発',type:'出発',x:82,dir:'→',section:9},
+{name:'C駅 場内',type:'場内',x:91,dir:'→',section:10},{name:'C駅 出発',type:'出発',x:96,dir:'←',section:11}];
+let trains=[],practiceTarget=null,quiz=[],simTimer=null,simOn=false;
+const aspects={3:['G','Y','R'],4:['R','YY','Y','G'],5:['R','YY','Y','YG','G']};
+const labels={G:'進行',Y:'注意',R:'停止',YY:'警戒',YG:'減速'};
+function currentOptions(){return aspects[aspectEl.value].map(a=>({code:a,label:a+'現示（'+labels[a]+'）'}))}
+function position(){return trains.map(t=>t.pos)}
+function clearRail(){rail.querySelectorAll('.station,.signal,.train,.occupied-line').forEach(e=>e.remove())}
+
+function render(){
+ clearRail();
+ stations.forEach(s=>{let d=document.createElement('div');d.className='station';d.style.left=s.x+'%';d.textContent=s.name;let p=document.createElement('div');p.className='platform';d.append(p);rail.append(d)});
+ // 列車が在線している閉塞区間の線路を赤く表示
+ const bounds=[10,19,27,35,43,51,60,69,77,82,91,96,100];
+ trains.forEach(t=>{
+   let idx=0;for(let i=0;i<bounds.length-1;i++){if(t.pos>=bounds[i]&&t.pos<bounds[i+1]){idx=i;break}}
+   let left=bounds[idx],right=bounds[idx+1];
+   let occupied=document.createElement('div');occupied.className='occupied-line';
+   occupied.style.left=left+'%';occupied.style.width=(right-left)+'%';rail.append(occupied);
+ });
+ signals.forEach((s,i)=>{let d=document.createElement('div');d.className='signal';d.style.left=s.x+'%';d.innerHTML=`<div class="arrow">${s.dir}</div><div class="signame">${s.name}</div><div class="lamp neutral" id="lamp${i}"></div><img class="aspect-image" id="aspectImage${i}" alt="${s.name}の現示画像" hidden>`;rail.append(d)});
+ trains.forEach(t=>{let d=document.createElement('div');d.className='train';d.style.left=t.pos+'%';d.innerHTML='<img src="train.png" style="width:30px;height:auto;">';d.title='列車';rail.append(d)});
+ updateSignals();
+}
+// 列車位置を基準に、各信号機の現示を閉塞単位で段階的に計算する。
+// 第2〜第1閉塞間に列車がいる5灯式の指定例を優先する。
+const orderedSignals=['A駅 出発','第6閉塞','第5閉塞','第4閉塞','第3閉塞','第2閉塞','第1閉塞','B駅 場内','B駅 出発','C駅 場内'];
+function signalFor(s){
+ if(s.name==='C駅 出発')return 'R';
+ if(s.type==='中継')return relayAnswer()==='進行'?'G':relayAnswer()==='停止'?'R':'Y';
+ const n=Number(aspectEl.value);
+ const sequence=n===3?['R','Y','G']:n===4?['R','YY','Y','G']:['R','YY','Y','YG','G'];
+ const idx=orderedSignals.indexOf(s.name);
+ if(idx<0)return 'G';
+ let result='G';
+ for(const train of trains){
+  // この信号より後ろにいる列車は、この信号の進行現示を制限しない
+  if(train.pos<=s.x)continue;
+  const entry=orderedSignals.findIndex((name,i)=>{
+    const curr=signals.find(sig=>sig.name===name);
+    const next=signals.find(sig=>sig.name===orderedSignals[i+1]);
+    return curr&&train.pos>=curr.x&&(!next||train.pos<next.x);
+  });
+  if(entry<0)continue;
+  const steps=entry-idx;
+  if(steps<0)continue;
+  let code=sequence[Math.min(steps,sequence.length-1)];
+  // 指定例：列車が第2〜第1閉塞間に在線する5灯式
+  // 第1=G、第2=YY、第3=Y、第4=YG、第5=G
+  if(n===5&&entry===orderedSignals.indexOf('第2閉塞')){
+   const example={'第2閉塞':'YY','第3閉塞':'Y','第4閉塞':'YG','第5閉塞':'G'};
+   if(example[s.name])code=example[s.name];
+  }
+  if(sequence.indexOf(code)<sequence.indexOf(result)||result==='G')result=code;
+ }
+ // B駅構内に在線している場合、場内は停止
+ if(s.name==='B駅 場内'&&trains.some(t=>t.pos>=77&&t.pos<82))return 'R';
+ return result;
+}
+function codeFor(state){return state}
+function relayAnswer(){
+ // 第3閉塞信号機の現示のみに連動する
+ const code=signalFor(signals.find(s=>s.name==='第3閉塞'));
+ return code==='G'?'進行':code==='R'?'停止':'制限';
+}
+function answerFor(s){return s.type==='中継'?relayAnswer():signalFor(s)}
+function choicesFor(s){return s.type==='中継'?[{code:'進行',label:'進行'},{code:'制限',label:'制限'},{code:'停止',label:'停止'}]:currentOptions()}
+function questionOptions(s){return choicesFor(s).map(o=>`<option value="${o.code}">${o.label}</option>`).join('')}
+function updateSignals(){
+ signals.forEach((s,i)=>{
+  let el=document.getElementById('lamp'+i);if(!el)return;const img=document.getElementById('aspectImage'+i);if(img)img.hidden=true;
+  // 練習・問題モードでは現示を隠し、丸だけを表示する
+  if(modeEl.value==='practice'||modeEl.value==='quiz'){el.className='lamp neutral';el.textContent='';el.style.outline='none';return;}
+  let code=signalFor(s);
+  if(s.type==='中継'){
+    let text=relayAnswer();
+    el.className='lamp '+(text==='進行'?'G':text==='停止'?'R':'Y');el.textContent=text==='進行'?'進':text==='停止'?'停':'制';
+  }else{
+    el.className='lamp '+code;el.textContent=code;
+  }
+  if(img){const imageCode=s.type==='中継'?(relayAnswer()==='進行'?'G':relayAnswer()==='停止'?'R':'Y'):code;const folder=s.type==='中継'?'chukei':aspectEl.value;const file=s.type==='中継'?imageCode:`${folder}_${imageCode}`;img.src=`${folder}/${file}.png`;img.alt=`${s.name}：${s.type==='中継'?relayAnswer():imageCode}の現示画像`;img.hidden=false;}
+  if(s.type==='場内'&&code==='G')el.style.outline='4px solid #22c55e';else el.style.outline='none';
+ });
+}
+function optionsMarkup(s){return choicesFor(s).map(o=>`<button data-answer="${o.code}">${o.label}</button>`).join('')}
+function selectQuestions(){
+ // 前方1問は列車のすぐ前方、後方3問は同じ列車の後ろ側
+ // 先頭列車に対する前方信号機、最後尾列車に対する後方信号機
+ const lead=Math.max(...trains.map(t=>t.pos));
+ const tail=Math.min(...trains.map(t=>t.pos));
+ const front=signals.find(s=>s.x>lead) || signals[signals.length-1];
+ const rear=signals.filter(s=>s.x<tail&&s!==front).slice(-3);
+ return [front,...rear];
+}
+function showPractice(){
+ const box=document.getElementById('practiceQuestions');box.innerHTML='';
+ if(practiceTarget===null){box.textContent='「練習列車を配置」を押してください。';return}
+ const chosen=selectQuestions();
+ box.innerHTML='<p>各現示は何か。</p>'+chosen.map((sig,i)=>`<div class="q"><strong>${i===0?'前方':'後方'}：${sig.name}</strong><div class="answers" data-index="${i}">${optionsMarkup(sig)}</div></div>`).join('');
+ box.querySelectorAll('.answers').forEach(group=>{
+  const sig=chosen[Number(group.dataset.index)];
+  group.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+   group.querySelectorAll('button').forEach(x=>x.disabled=true);
+   const actual=answerFor(sig);
+   b.style.background=b.dataset.answer===actual?'#dcfce7':'#fee2e2';
+   document.getElementById('status').textContent=b.dataset.answer===actual?'正解！':'不正解。正解は '+actual+' です。';
+  });
+ });
+}
+function makeQuiz(){
+ const count=2+Math.floor(Math.random()*2);
+ // 後方3問を必ず用意できるよう、最後尾は第4閉塞以降
+ const sets=count===2?[[39,73],[47,86],[55,94],[39,86]]:[[39,64,86],[47,73,94],[39,55,86]];
+ const chosen=sets[Math.floor(Math.random()*sets.length)];
+ trains=chosen.map(pos=>({pos}));
+ const selected=selectQuestions();
+ quiz=selected.map(signal=>({signal,answer:answerFor(signal),user:''}));
+ render();
+ document.getElementById('quizQuestions').innerHTML=quiz.map((q,i)=>`<div class="q"><strong>${i+1}. ${i===0?'前方':'後方'}：${q.signal.name}は何現示？</strong><select data-q="${i}"><option value="">選択してください</option>${questionOptions(q.signal)}</select></div>`).join('');
+ document.getElementById('gradeResult').classList.add('hidden');
+ document.getElementById('status').textContent=`問題を作成しました（${count}列車）。各現示は何か。`;
+}
+// 列車位置は信号機の間にある各閉塞の代表点。中継信号機は閉塞境界に数えない。
+const simBlocks=[14,23,31,39,47,55,64,73,79.5,86,93];
+let simIndices=[];
+function initializeSim(){
+ const count=Number(document.getElementById('simCount').value);
+ // 閉塞数を本数で割ってできるだけ均等に配置
+ simIndices=Array.from({length:count},(_,i)=>Math.floor(i*simBlocks.length/count));
+ trains=simIndices.map(i=>({pos:simBlocks[i]}));
+ render();
+}
+function moveSim(){
+ if(!simIndices.length){initializeSim();return;}
+ // 5秒につき各列車が必ずちょうど1閉塞分進む
+ simIndices=simIndices.map(i=>(i+1)%simBlocks.length);
+ trains=simIndices.map(i=>({pos:simBlocks[i]}));
+ render();
+ document.getElementById('status').textContent=`シミュレーター：${simIndices.length}本運転中。5秒ごとに1閉塞進行。`;
+}
+function resetAll(message='リセットしました。'){
+ stopSim();trains=[];simIndices=[];practiceTarget=null;quiz=[];
+ document.getElementById('quizQuestions').innerHTML='';
+ document.getElementById('gradeResult').classList.add('hidden');
+ render();showPractice();
+ document.getElementById('status').textContent=message;
+}
+function switchMode(){let m=modeEl.value;document.getElementById('practiceControls').classList.toggle('hidden',m!=='practice');document.getElementById('quizControls').classList.toggle('hidden',m!=='quiz');document.getElementById('simControls').classList.toggle('hidden',m!=='sim');document.getElementById('practicePanel').classList.toggle('hidden',m!=='practice');document.getElementById('quizPanel').classList.toggle('hidden',m!=='quiz');resetAll('モードを変更したため、列車と問題をリセットしました。');document.getElementById('status').textContent=m==='practice'?'練習モード：列車を配置して、前方の信号現示を選択してください。':m==='quiz'?'問題モード：問題を作成し、すべて回答してから答え合わせをしてください。':'シミュレーターモード：開始すると5秒ごとに列車が進みます。'}
+function stopSim(){if(simTimer)clearInterval(simTimer);simTimer=null;simOn=false;document.getElementById('simToggle').textContent='シミュレーター開始'}
+document.getElementById('newPractice').onclick=()=>{practiceTarget=[39,47,55,64,73,86][Math.floor(Math.random()*6)];trains=[{pos:practiceTarget}];render();showPractice();document.getElementById('status').textContent='列車を配置しました。前方信号機の現示を選択してください。'};
+document.getElementById('newQuiz').onclick=makeQuiz;
+document.getElementById('grade').onclick=()=>{let selects=[...document.querySelectorAll('#quizQuestions select')],correct=0;if(!quiz.length){document.getElementById('status').textContent='先に問題を作成してください。';return;}if(selects.some(s=>!s.value)){document.getElementById('status').textContent='4問すべてに回答してください。';return;}selects.forEach((s,i)=>{quiz[i].user=s.value;if(s.value===quiz[i].answer)correct++;s.disabled=true});let r=document.getElementById('gradeResult');r.classList.remove('hidden');r.textContent=`${correct} / ${quiz.length} 問正解。`+quiz.map((q,i)=>`${i+1}問：正解 ${q.answer}`).join('　');};
+document.getElementById('simToggle').onclick=()=>{if(simOn){stopSim();document.getElementById('status').textContent='シミュレーターを停止しました。'}else{simOn=true;document.getElementById('simToggle').textContent='停止';initializeSim();simTimer=setInterval(moveSim,5000)}};
+document.getElementById('reset').onclick=()=>resetAll();document.getElementById('simCount').onchange=()=>resetAll('列車本数を変更しました。開始ボタンを押してください。');
+modeEl.onchange=switchMode;aspectEl.onchange=()=>{if(modeEl.value==='quiz'&&quiz.length)makeQuiz();else if(practiceTarget!==null)showPractice();render()};
+render();showPractice();
+</script></main></body></html>
